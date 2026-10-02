@@ -198,6 +198,16 @@
   .forest-card { transition: transform .2s ease, box-shadow .2s ease; cursor: pointer; text-align: left; }
   .forest-card:hover { transform: translateY(-4px) rotate(-.3deg); }
   .forest-card:active { transform: translateY(0) scale(.99); }
+  .choose-card {
+    position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 2.4rem 1.5rem 2rem; border-radius: 30px; border-width: 3px; cursor: pointer;
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .choose-card.concept { background: linear-gradient(160deg, #eaf7f1, #d6eee2); border-color: #5b9e7e; box-shadow: 0 7px 0 #b9d9c8, 0 16px 30px rgba(47,107,85,.15); }
+  .choose-card.quiz { background: linear-gradient(160deg, #fff7dc, #fde49e); border-color: #e3b54a; box-shadow: 0 7px 0 #ecd28f, 0 16px 30px rgba(139,98,64,.15); transform: rotate(-.8deg); }
+  .choose-card:hover { transform: translateY(-5px) rotate(0deg); }
+  .choose-card:active { transform: translateY(1px) scale(.99); }
+  .choose-chip { margin-top: 1.1rem; display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .85rem; border-radius: 999px; font-family: 'Jua', sans-serif; font-size: .92rem; }
   .progress-vine { height: 10px; border-radius: 99px; background: rgba(139,94,52,.15); overflow: hidden; }
   .progress-vine > span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #6fbf8e, #e8a84a); transition: width .6s; }
 
@@ -659,51 +669,107 @@ function menuScreen(app, { title, sub, ids, desc }) {
 SCREENS.plane = (app) => menuScreen(app, { title: '평면도형의 숲', sub: 'CHAPTER 1', ids: ['polygon', 'circle'], desc: '나뭇잎 사이로 다각형과 원이 반짝이고 있어. 슬라이더를 움직여 도형의 비밀을 찾아낸 뒤 퀘스트에 도전해 봐!' });
 SCREENS.solid = (app) => menuScreen(app, { title: '입체도형의 숲', sub: 'CHAPTER 2', ids: ['viewer', 'net', 'surface', 'volume'], desc: '마법으로 도형을 손바닥 위에 띄웠어. 이리저리 돌려 보고, 접고, 자르고, 물에 넣어 보면서 입체도형을 탐험해 봐!' });
 
-/* ---------- 단원 화면: 시뮬레이터 + (개념 | 퀘스트) ---------- */
+/* ---------- 단원 화면: [개념 정리] / [퀴즈 풀기] 선택 ---------- */
+const BOOK_ICON = `<svg width="132" height="112" viewBox="0 0 132 112" aria-hidden="true">
+  <path d="M66 20 C52 10 30 8 10 12 V92 C30 88 52 90 66 100 C80 90 102 88 122 92 V12 C102 8 80 10 66 20 Z" fill="#fff" stroke="#3f7560" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M66 20 V100" stroke="#3f7560" stroke-width="6" stroke-linecap="round"/>
+  <path d="M24 38 C34 34 44 34 54 38 M24 54 C34 50 44 50 54 54 M78 38 C88 34 98 34 108 38 M78 54 C88 50 98 50 108 54" fill="none" stroke="#a6dcc6" stroke-width="7" stroke-linecap="round"/>
+</svg>`;
+const QUIZ_ICON = `<svg width="150" height="132" viewBox="0 0 150 132" aria-hidden="true">
+  <path d="M22 10 H104 a14 14 0 0 1 14 14 V74 a14 14 0 0 1 -14 14 H58 L32 110 L38 88 H22 a14 14 0 0 1 -14 -14 V24 a14 14 0 0 1 14 -14 Z" fill="#fff" stroke="#8b6240" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M51 38 a12 12 0 1 1 18 10 c-5 3 -6 6 -6 11" fill="none" stroke="#dba237" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="63" cy="73" r="5" fill="#dba237"/>
+  <g transform="translate(112 86)">
+    <path d="M-16 0 C-16 18 -6 30 0 34 C6 30 16 18 16 0 Z" fill="#e2b07c"/>
+    <path d="M-10 4 C-10 16 -4 24 0 27" fill="none" stroke="#f3d3ad" stroke-width="3" stroke-linecap="round"/>
+    <path d="M-19 2 C-19 -12 19 -12 19 2 Z" fill="#8b5e34"/>
+    <path d="M-13 -4 h26 M-15 0 h30" stroke="#6f4a28" stroke-width="2"/>
+    <path d="M0 -10 V-16" stroke="#6f4a28" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <path d="M132 64 l2 5 l5 2 l-5 2 l-2 5 l-2 -5 l-5 -2 l5 -2 z M92 112 l1.5 4 l4 1.5 l-4 1.5 l-1.5 4 l-1.5 -4 l-4 -1.5 l4 -1.5 z" fill="#e7b84f"/>
+</svg>`;
+const unitHeader = (u, backLabel, backTo, extra = '') => `
+  <div class="flex flex-wrap items-center gap-3 mb-5">${backBtn(backLabel, backTo)}
+    <div class="min-w-[11rem] flex-1"><div class="text-sm opacity-70 font-title">${u.code}</div><h1 class="font-title text-2xl sm:text-3xl text-wood-700 leading-tight">${u.title}</h1></div>
+    ${extra ? `<div class="w-full sm:w-auto flex justify-end">${extra}</div>` : ''}
+  </div>`;
 SCREENS.unit = (app, id) => {
+  const u = UNITS[id], p = unitProgress([id]);
+  const rs = (S.retry || {})[id];
+  const qsAll = u.quiz, tried = qsAll.every((q) => S.q[q.id]), hasWrong = qsAll.some((q) => S.q[q.id] === 'wrong');
+  const quizBadge = p.correct === p.total ? `${stampSVG()} 모두 해결!`
+    : tried && hasWrong && rs !== 'done' ? '🔁 단원 재도전 가능!' : `🌰 ${p.correct} / ${p.total}`;
+  app.innerHTML = `
+  <div>
+    ${unitHeader(u, '단원 선택', u.cat)}
+    <div class="grid md:grid-cols-2 gap-6 sm:gap-8 mt-2">
+      <button class="choose-card concept" data-go="concept:${id}">
+        <div class="float">${BOOK_ICON}</div>
+        <div class="font-title text-3xl sm:text-4xl mt-4 text-[#2f6b55]">개념 정리</div>
+        <p class="mt-3 text-[15px] sm:text-base leading-relaxed text-[#6b6156]">${u.conceptDesc}</p>
+        <span class="choose-chip bg-white/70 text-[#2f6b55]"><i data-lucide="wand-sparkles" class="w-4 h-4"></i>마법 시뮬레이터 + 개념 마법서</span>
+      </button>
+      <button class="choose-card quiz" data-go="quiz:${id}">
+        <div class="float" style="animation-delay:-2s">${QUIZ_ICON}</div>
+        <div class="font-title text-3xl sm:text-4xl mt-2 text-[#8b6240]">퀴즈 풀기</div>
+        <p class="mt-3 text-[15px] sm:text-base leading-relaxed text-[#6b6156]">첫 번에 맞히면 도토리 1개!<br/>틀리면 단계별 힌트가 나와요</p>
+        <span class="choose-chip bg-white/70 text-[#8b6240]">${quizBadge}</span>
+      </button>
+    </div>
+  </div>`;
+  bindGo(app);
+};
+
+/* ---------- 개념 정리: 마법 시뮬레이터 + 개념 마법서 ---------- */
+SCREENS.concept = (app, id) => {
   const u = UNITS[id];
   app.innerHTML = `
   <div>
-    <div class="flex flex-wrap items-center gap-3 mb-4">${backBtn(u.cat === 'plane' ? '평면도형의 숲' : '입체도형의 숲', u.cat)}
-      <div class="min-w-0"><div class="text-sm opacity-70 font-title">${u.code}</div><h1 class="font-title text-2xl sm:text-3xl text-wood-700 leading-tight">${u.title}</h1></div>
-    </div>
+    ${unitHeader(u, u.title, 'unit:' + id, `<button class="btn-wood leaf sm" data-go="quiz:${id}">퀴즈 풀기 <i data-lucide="arrow-right" class="w-4 h-4"></i></button>`)}
     <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-6 items-start">
-      <section class="book-card min-w-0 lg:sticky lg:top-[76px]" aria-label="시뮬레이터">
+      <section class="book-card min-w-0 lg:sticky lg:top-[76px]" aria-label="마법 시뮬레이터">
         ${corners}
         <div class="relative flex items-center gap-2 mb-3 font-title text-lg text-wood-700"><i data-lucide="wand-sparkles" class="w-5 h-5"></i>마법 시뮬레이터</div>
         <div id="sim" class="relative"></div>
       </section>
-      <section class="book-card min-w-0" aria-label="개념과 퀘스트">
+      <section class="book-card min-w-0 concept" aria-label="개념 마법서">
         ${corners}
-        <div class="tabbar relative mb-4" role="tablist">
-          <button data-tab="concept" role="tab"><i data-lucide="book-open" class="w-4 h-4"></i>개념 마법서</button>
-          <button data-tab="quiz" role="tab"><i data-lucide="swords" class="w-4 h-4"></i>퀘스트 <span id="tab-count" class="text-xs opacity-70"></span></button>
-        </div>
-        <div id="tab-concept" class="relative concept"></div>
-        <div id="tab-quiz" class="relative" hidden></div>
+        <div class="relative flex items-center gap-2 mb-4 font-title text-lg text-wood-700"><i data-lucide="book-open" class="w-5 h-5"></i>개념 마법서</div>
+        <div class="relative flex items-start gap-3 mb-4"><img src="c1.png" alt="" class="mascot-ring w-12 h-12 shrink-0" /><div class="speech text-[15px]">${u.tip}</div></div>
+        <div class="relative">${mathify(u.concept)}</div>
+        <button class="btn-wood leaf w-full mt-5 relative" data-go="quiz:${id}">개념을 익혔다면 퀴즈 풀러 가기 <i data-lucide="swords" class="w-4 h-4"></i></button>
       </section>
     </div>
   </div>`;
   bindGo(app);
-  $('#tab-concept').innerHTML = `
-    <div class="flex items-start gap-3 mb-4"><img src="c1.png" alt="" class="mascot-ring w-12 h-12 shrink-0" /><div class="speech text-[15px]">${u.tip}</div></div>
-    ${mathify(u.concept)}
-    <button class="btn-wood leaf w-full mt-5" data-tabgo="quiz">퀘스트 도전하기 <i data-lucide="swords" class="w-4 h-4"></i></button>`;
-  const setTab = (t) => {
-    $$('[data-tab]', app).forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-    $('#tab-concept').hidden = t !== 'concept'; $('#tab-quiz').hidden = t !== 'quiz';
-  };
-  $$('[data-tab]', app).forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
-  $('[data-tabgo]', app).addEventListener('click', () => { setTab('quiz'); $('#tab-quiz').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
-  setTab('concept');
-  const quizCleanup = mountQuiz($('#tab-quiz'), u);
   let simCleanup = null;
   try { simCleanup = u.sim($('#sim')); } catch (e) {
     console.error(e);
     $('#sim').innerHTML = `<div class="p-6 text-center">시뮬레이터를 불러오지 못했어요. 인터넷 연결(3D 라이브러리)을 확인해 주세요.</div>`;
   }
   icons();
-  return () => { quizCleanup && quizCleanup(); simCleanup && simCleanup(); };
+  return () => { simCleanup && simCleanup(); };
+};
+
+/* ---------- 퀴즈 풀기 ---------- */
+SCREENS.quiz = (app, id) => {
+  const u = UNITS[id];
+  app.innerHTML = `
+  <div class="max-w-3xl mx-auto">
+    ${unitHeader(u, u.title, 'unit:' + id, `<button class="btn-ghost" data-go="concept:${id}"><i data-lucide="book-open" class="w-4 h-4"></i>개념 정리 보기</button>`)}
+    <section class="book-card" aria-label="퀴즈">
+      ${corners}
+      <div class="relative flex items-center justify-between gap-2 mb-4">
+        <div class="font-title text-lg text-wood-700 flex items-center gap-2 whitespace-nowrap"><i data-lucide="swords" class="w-5 h-5"></i>퀴즈 풀기 <span id="tab-count" class="text-sm opacity-70"></span></div>
+        <span class="hidden sm:inline text-sm opacity-80 text-right">첫 번에 맞히면 🌰 1개 · 틀리면 단계별 힌트</span>
+      </div>
+      <div id="quiz-box" class="relative"></div>
+    </section>
+  </div>`;
+  bindGo(app);
+  const quizCleanup = mountQuiz($('#quiz-box'), u);
+  icons();
+  return () => { quizCleanup && quizCleanup(); };
 };
 
 /* ============================ 퀘스트(문제) ============================
@@ -1097,6 +1163,17 @@ const UNITS = {
     ],
   },
 };
+
+/* ---------- 단원 선택 화면의 [개념 정리] 카드 설명 ---------- */
+const CONCEPT_DESC = {
+  polygon: '변의 개수 슬라이더로 내각·외각·대각선 실험<br/>내각의 합과 대각선의 개수 공식',
+  circle: '반지름·중심각 슬라이더로 호와 넓이 실험<br/>원과 부채꼴의 용어와 공식',
+  viewer: '다면체·회전체를 3D로 돌려 보고 단면 자르기<br/>정다면체와 회전체의 성질',
+  net: '전개도 접기·펼치기 3D 실험<br/>각기둥·각뿔·원기둥·원뿔의 전개도',
+  surface: '면을 눌러 보고 분해하는 3D 실험<br/>밑넓이와 옆넓이로 겉넓이 구하기',
+  volume: '구멍 뚫린 도형·수조 실험<br/>기둥·뿔·구의 부피',
+};
+Object.entries(CONCEPT_DESC).forEach(([id, d]) => { UNITS[id].conceptDesc = d; });
 
 /* ---------- 단계별 힌트 1단계: 사용할 개념 안내 ---------- */
 const CONCEPT_HINTS = {
