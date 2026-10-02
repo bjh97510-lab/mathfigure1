@@ -174,6 +174,9 @@
   .q-dot { width: 30px; height: 30px; border-radius: 99px; display: grid; place-items: center; font-size: .8rem; font-family: 'Jua', sans-serif; border: 2px solid rgba(139,94,52,.35); background: #fffdf6; cursor: pointer; }
   .q-dot.correct { background: #e6f4e5; border-color: #3f7d4e; }
   .q-dot.wrong { background: #fde9d8; border-color: #d98c3a; }
+  .q-dot.retry-correct { background: #e6f4e5; border-color: #3f7d4e; border-style: dashed; }
+  .q-dot.retry-wrong { background: #f9dcd6; border-color: #c4553f; }
+  .hint-step { animation: pop .35s ease; }
   .q-dot.cur { box-shadow: 0 0 0 3px rgba(232,168,74,.55); }
   .feedback { border-radius: 14px; padding: .8rem 1rem; animation: pop .35s ease; }
   .feedback.ok { background: #e6f4e5; border: 2px solid #8cc79a; }
@@ -251,6 +254,7 @@
   .toast { background: #fffaf0; border: 2px solid #8b5e34; border-radius: 14px; padding: .6rem 1rem; box-shadow: 0 8px 22px rgba(63,40,18,.25); font-family: 'Jua', sans-serif; animation: toastIn .35s ease; text-align: center; }
   @keyframes toastIn { from { opacity: 0; transform: translateY(-10px) scale(.95);} to { opacity: 1; transform: none; } }
   #modal { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: rgba(42,30,15,.55); backdrop-filter: blur(3px); padding: 16px; }
+  .stamp-card { background: #fdeee6; border: 2px solid #f2c9b8; box-shadow: 0 4px 12px rgba(214,76,66,.08); }
   .stamp-big { font-size: 96px; line-height: 1; display: inline-block; animation: stampIn .7s cubic-bezier(.2,1.6,.4,1) both; filter: drop-shadow(0 6px 10px rgba(180,40,60,.35)); }
   @keyframes stampIn { 0% { transform: scale(3) rotate(-25deg); opacity: 0; } 60% { transform: scale(.9) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(-6deg); } }
   .mascot-ring { border-radius: 999px; object-fit: cover; object-position: 50% 22%; border: 3px solid #f1dcae; box-shadow: 0 0 0 2px #8b5e34, 0 6px 14px rgba(63,40,18,.25); }
@@ -333,22 +337,36 @@ function piTex(num, den = 1) {
   if (d === 1) return (n === 1 ? '' : n) + '\\pi';
   return `\\frac{${n}}{${d}}\\pi`;
 }
-/** 칭찬도장 이미지 (글씨 없는 꽃 모양 도장) */
+/** 칭찬도장 이미지: 점선 테두리 + 빨간 원 도장 + 별 + "참 잘 했어요!" */
 function stampSVG(size = '1.15em', extra = '') {
-  const petals = Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return `<circle cx="${(50 + 38 * Math.cos(a)).toFixed(2)}" cy="${(50 + 38 * Math.sin(a)).toFixed(2)}" r="12.5"/>`; }).join('');
-  const star = Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 7.5 : 17; return `${(50 + r * Math.cos(a)).toFixed(2)},${(51 + r * Math.sin(a)).toFixed(2)}`; }).join(' ');
-  return `<svg class="stamp-svg ${extra}" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true" style="display:inline-block;vertical-align:-0.18em">
-    <g fill="#e2574c">${petals}<circle cx="50" cy="50" r="40"/></g>
-    <circle cx="50" cy="50" r="33" fill="#fff4ef"/>
-    <circle cx="50" cy="50" r="29" fill="none" stroke="#e2574c" stroke-width="3.2" stroke-dasharray="4 3"/>
-    <polygon points="${star}" fill="#e2574c" stroke="#e2574c" stroke-width="2.5" stroke-linejoin="round"/>
-    <path d="M30 66 q6 -8 12 -2 M70 66 q-6 -8 -12 -2" fill="none" stroke="#7fb069" stroke-width="3.5" stroke-linecap="round"/>
+  return `<svg class="stamp-svg ${extra}" width="${size}" height="${size}" viewBox="0 0 100 100" aria-hidden="true" style="display:inline-block;vertical-align:-0.2em">
+    <circle cx="50" cy="50" r="47" fill="#fff" stroke="#ec9a90" stroke-width="2.6" stroke-dasharray="5 4"/>
+    <g transform="rotate(-10 50 50)">
+      <circle cx="50" cy="50" r="38" fill="#fffdfb" stroke="#d64c42" stroke-width="5"/>
+      <polygon points="50,15.5 52.6,21.4 59,22 54.2,26.2 55.6,32.5 50,29.2 44.4,32.5 45.8,26.2 41,22 47.4,21.4" fill="#d64c42"/>
+      <text x="50" y="52" text-anchor="middle" font-family="Jua, 'Gowun Dodum', sans-serif" font-size="19" fill="#d64c42">참 잘</text>
+      <text x="50" y="73" text-anchor="middle" font-family="Jua, 'Gowun Dodum', sans-serif" font-size="18" fill="#d64c42">했어요!</text>
+    </g>
   </svg>`;
 }
+/** 도장 손잡이 아이콘 */
+const STAMPER_SVG = `<svg width="44" height="44" viewBox="0 0 48 48" aria-hidden="true">
+  <circle cx="24" cy="11" r="8" fill="#c98a4b" stroke="#8b5e34" stroke-width="2"/>
+  <path d="M20 18 h8 l2 12 h-12 z" fill="#b07842" stroke="#8b5e34" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="9" y="30" width="30" height="7" rx="2.5" fill="#c98a4b" stroke="#8b5e34" stroke-width="2"/>
+  <rect x="8" y="37" width="32" height="5" rx="1.5" fill="#d64c42"/>
+</svg>`;
+/** 칭찬도장 카드 (로비) */
+const stampCard = (n) => `
+  <div class="stamp-card flex items-center gap-3 sm:gap-4 px-4 py-3 rounded-2xl">
+    ${STAMPER_SVG}
+    ${stampSVG('68px')}
+    <div class="text-center px-1"><div class="font-title text-wood-700">칭찬 도장</div><div class="font-title text-3xl text-[#d64c42] leading-none mt-1">${n}</div></div>
+  </div>`;
 const PAL = ['#f2b866', '#8fd0a4', '#8ec9e6', '#f0a3a3', '#c3b1e8', '#f5d77a', '#9ed8c9', '#f6b98f'];
 
 /* ============================ 상태 & 저장 ============================ */
-const DEFAULT_STATE = () => ({ id: null, acorns: 0, stamps: 0, solvedCount: 0, correctCount: 0, q: {} });
+const DEFAULT_STATE = () => ({ id: null, acorns: 0, stamps: 0, solvedCount: 0, correctCount: 0, q: {}, retry: {} });
 let S = DEFAULT_STATE();
 const storeKey = (id) => 'forest-math-v1:' + id;
 function loadState(id) {
@@ -501,7 +519,7 @@ function go(name, arg) {
 }
 const unitProgress = (unitIds) => {
   let total = 0, correct = 0;
-  unitIds.forEach((id) => UNITS[id].quiz.forEach((q) => { total++; if (S.q[q.id] === 'correct') correct++; }));
+  unitIds.forEach((id) => UNITS[id].quiz.forEach((q) => { total++; if (S.q[q.id] === 'correct' || S.q[q.id] === 'retry-correct') correct++; }));
   return { total, correct };
 };
 const backBtn = (label, to) => `<button class="btn-ghost" data-go="${to}"><i data-lucide="arrow-left" class="w-4 h-4"></i>${label}</button>`;
@@ -581,17 +599,20 @@ SCREENS.lobby = (app) => {
       <img src="c1.png" alt="숲의 요정" class="mascot-ring w-16 h-16 sm:w-20 sm:h-20 shrink-0 float" />
       <div class="speech">
         <div class="font-title text-lg sm:text-xl text-wood-700">안녕, <span class="text-leaf-600">${S.id}</span> 원정대원! 🌿</div>
-        <p class="text-[15px] leading-relaxed mt-1">나는 도형의 숲을 지키는 요정이야. 문제를 맞힐 때마다 <b>마법 도토리 🌰</b>를 줄게. 도토리 <b>${ACORNS_PER_STAMP}개</b>를 모으면 <b>칭찬도장 ${stampSVG()}</b>으로 바꿔 줄게! 오늘은 어느 숲을 탐험해 볼까?</p>
+        <p class="text-[15px] leading-relaxed mt-1">나는 도형의 숲을 지키는 요정이야. 문제를 <b>처음에</b> 맞힐 때마다 <b>마법 도토리 🌰</b>를 줄게. 도토리 <b>${ACORNS_PER_STAMP}개</b>를 모으면 <b>칭찬도장 ${stampSVG()}</b>으로 바꿔 줄게! 오늘은 어느 숲을 탐험해 볼까?</p>
       </div>
     </div>
     <div class="grid md:grid-cols-2 gap-7 sm:gap-8">
       ${card('plane', '평면도형의 숲', 'CHAPTER 1', '다각형의 내각·외각과 대각선, 원과 부채꼴의 호의 길이와 넓이를 직접 움직여 보며 익혀요.', ART.plane, p1, 'linear-gradient(160deg,#d8efd3,#f6e3b4)')}
       ${card('solid', '입체도형의 숲', 'CHAPTER 2', '다면체와 회전체를 3D로 돌려 보고, 전개도를 접고, 겉넓이와 부피를 마법으로 분해해 봐요.', ART.solid, p2, 'linear-gradient(160deg,#d6e8f3,#efe0c0)')}
     </div>
-    <div class="mt-8 soft-card p-4 flex flex-wrap gap-x-6 gap-y-2 items-center text-sm">
-      <span class="font-title text-base text-wood-700 flex items-center gap-1"><i data-lucide="scroll-text" class="w-4 h-4"></i>나의 원정 기록</span>
-      <span>도전한 문제 <b>${S.solvedCount}</b></span><span>맞힌 문제 <b>${S.correctCount}</b></span>
-      <span>도토리 🌰 <b>${S.acorns}</b></span><span>칭찬도장 ${stampSVG()} <b>${S.stamps}</b></span>
+    <div class="mt-8 soft-card p-4 flex flex-wrap gap-x-6 gap-y-3 items-center text-sm">
+      <div class="flex flex-wrap gap-x-6 gap-y-2 items-center flex-1 min-w-[14rem]">
+        <span class="font-title text-base text-wood-700 flex items-center gap-1"><i data-lucide="scroll-text" class="w-4 h-4"></i>나의 원정 기록</span>
+        <span>도전한 문제 <b>${S.solvedCount}</b></span><span>맞힌 문제 <b>${S.correctCount}</b></span>
+        <span>도토리 🌰 <b>${S.acorns}</b> / ${ACORNS_PER_STAMP}</span>
+      </div>
+      ${stampCard(S.stamps)}
     </div>
   </div>`;
   bindGo(app);
@@ -685,32 +706,81 @@ SCREENS.unit = (app, id) => {
   return () => { quizCleanup && quizCleanup(); simCleanup && simCleanup(); };
 };
 
-/* ============================ 퀘스트(문제) ============================ */
+/* ============================ 퀘스트(문제) ============================
+ * 보상 규칙
+ *  - 처음 도전에서 맞히면 도토리 +1 (상태 'correct')
+ *  - 처음 도전에서 틀리면 상태 'wrong' → 그 자리에서 단계별 힌트를 보며 연습할 수 있지만 도토리는 없음
+ *  - 단원의 모든 퀘스트에 도전하면 '단원 재도전'이 1번 열림: 틀렸던 퀘스트를 한 번씩 다시 풀고,
+ *    맞히면 도토리 +1 (상태 'retry-correct'), 틀리면 'retry-wrong'
+ * 단계별 힌트: 1단계 개념 안내 → 2단계 수식 힌트 → 3단계 해설
+ */
 function normalizeAnswer(v) { return String(v).replace(/[\s,]/g, '').replace(/(cm³|cm²|cm|°|도|π|개|m³|㎤)/g, ''); }
 function isCorrect(q, v) {
   if (q.type === 'choice') return Number(v) === q.answer;
   const n = Number(normalizeAnswer(v));
   return normalizeAnswer(v) !== '' && Number.isFinite(n) && Math.abs(n - q.answer) < 1e-6;
 }
+const isSolved = (st) => st === 'correct' || st === 'retry-correct';
+const HINT_STEPS = [
+  { icon: '💡', label: '1단계 · 개념 떠올리기', key: 'concept' },
+  { icon: '✏️', label: '2단계 · 수식 힌트', key: 'hint' },
+  { icon: '📖', label: '3단계 · 해설', key: 'explain' },
+];
 function mountQuiz(el, unit) {
   const qs = unit.quiz;
-  let idx = Math.max(0, qs.findIndex((q) => S.q[q.id] !== 'correct'));
-  let phase = 'ask', picked = null, lastRewarded = false, hintOpen = false;
-  const updateCount = () => { const c = qs.filter((q) => S.q[q.id] === 'correct').length; const tc = $('#tab-count'); if (tc) tc.textContent = `${c}/${qs.length}`; };
+  S.retry = S.retry || {};
+  const retryState = () => S.retry[unit.id] || 'none'; // none | active | done
+  const firstOpen = () => qs.findIndex((q) => !S.q[q.id]);
+  const nextRetry = (from = -1) => {
+    for (let k = 1; k <= qs.length; k++) { const i = (from + k + qs.length) % qs.length; if (S.q[qs[i].id] === 'wrong') return i; }
+    return -1;
+  };
+  let idx = firstOpen() >= 0 ? firstOpen() : retryState() === 'active' && nextRetry() >= 0 ? nextRetry() : 0;
+  let phase = 'ask', picked = null, lastRewarded = false, lastKind = 'first';
+  const hintLv = {}; // 문제별로 펼친 힌트 단계 (0~3)
+  /** 지금 이 문제를 풀면 어떤 도전인지: 첫 도전 / 단원 재도전 / 연습 */
+  const kindOf = (q) => {
+    const st = S.q[q.id];
+    if (!st) return 'first';
+    if (st === 'wrong' && retryState() === 'active') return 'retry';
+    return 'practice';
+  };
+  const updateCount = () => { const c = qs.filter((q) => isSolved(S.q[q.id])).length; const tc = $('#tab-count'); if (tc) tc.textContent = `${c}/${qs.length}`; };
+  function hintsHTML(q) {
+    const lv = hintLv[q.id] || 0;
+    if (!lv && phase !== 'wrong') return '';
+    const steps = HINT_STEPS.slice(0, lv).map((s, i) => `
+      <div class="hint-step mt-2 flex gap-2 items-start">
+        ${i === 0 ? '<img src="c1.png" alt="" class="mascot-ring w-9 h-9 shrink-0"/>' : '<span class="w-9 shrink-0"></span>'}
+        <div class="speech text-[15px] leading-relaxed flex-1"><div class="text-xs font-title text-wood-600 mb-0.5">${s.icon} ${s.label}</div>${mathify(q[s.key])}</div>
+      </div>`).join('');
+    const nextBtn = lv < 3 ? `<button class="btn-ghost !bg-[#fff3d1] !border-[#e0b46a]" data-hint>${HINT_STEPS[lv].icon} ${HINT_STEPS[lv].label} 보기</button>` : '';
+    return `<div class="mt-3">${steps}<div class="flex flex-wrap gap-2 justify-end mt-3">${nextBtn}${phase === 'wrong' ? '<button class="btn-wood sm" data-retry><i data-lucide="rotate-ccw" class="w-4 h-4"></i>다시 풀기</button>' : ''}</div></div>`;
+  }
   function render() {
     updateCount();
-    const q = qs[idx]; const st = S.q[q.id];
+    const q = qs[idx], st = S.q[q.id], kind = kindOf(q);
     const allTried = qs.every((x) => S.q[x.id]);
-    const correctN = qs.filter((x) => S.q[x.id] === 'correct').length;
+    const solvedN = qs.filter((x) => isSolved(S.q[x.id])).length;
+    const wrongN = qs.filter((x) => S.q[x.id] === 'wrong').length;
+    const badge = {
+      first: '<span class="text-xs font-title text-wood-600">🌰 첫 도전 — 맞히면 도토리!</span>',
+      retry: '<span class="text-xs font-title px-2 py-0.5 rounded-full bg-[#fde3c8] text-[#a4511f]">🔁 단원 재도전 — 맞히면 도토리!</span>',
+      practice: isSolved(st) ? `<span class="text-xs font-title text-leaf-700">${stampSVG()} 해결한 퀘스트 (복습)</span>` : '<span class="text-xs font-title text-wood-600 opacity-80">✍️ 연습 중 (도토리 없음)</span>',
+    }[kind];
+    const dot = (x, i) => {
+      const s = S.q[x.id] || '';
+      return `<button class="q-dot ${s} ${i === idx ? 'cur' : ''}" data-jump="${i}" aria-label="${i + 1}번 퀘스트">${isSolved(s) ? '🌰' : i + 1}</button>`;
+    };
     el.innerHTML = `
       <div class="flex items-start justify-between gap-2 mb-4">
-        <div class="flex flex-wrap gap-1.5">${qs.map((x, i) => `<button class="q-dot ${S.q[x.id] || ''} ${i === idx ? 'cur' : ''}" data-jump="${i}" aria-label="${i + 1}번 퀘스트">${S.q[x.id] === 'correct' ? '🌰' : i + 1}</button>`).join('')}</div>
+        <div class="flex flex-wrap gap-1.5">${qs.map(dot).join('')}</div>
         <span class="font-title text-sm opacity-70 whitespace-nowrap pt-1">퀘스트 ${idx + 1} / ${qs.length}</span>
       </div>
       <div class="soft-card p-4 sm:p-5">
-        <div class="flex items-center justify-between gap-2 mb-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
           <span class="text-xs font-title px-2 py-0.5 rounded-full bg-leaf-400/25 text-leaf-700">${q.tag}</span>
-          ${st === 'correct' && phase === 'ask' ? `<span class="text-xs font-title text-leaf-700">${stampSVG()} 해결한 퀘스트 (복습 중)</span>` : ''}
+          ${phase === 'ask' ? badge : ''}
         </div>
         <div class="text-[17px] leading-relaxed font-medium">${mathify(q.q)}</div>
         <div class="mt-4" id="q-body">
@@ -725,62 +795,96 @@ function mountQuiz(el, unit) {
         </div>
         <div id="q-feedback" class="mt-4">${feedbackHTML(q)}</div>
       </div>
-      ${allTried ? `<div class="mt-4 soft-card p-4 flex flex-wrap items-center gap-3">
-          <span class="text-2xl">${correctN === qs.length ? stampSVG() : '🍃'}</span>
-          <div class="flex-1 min-w-[10rem]"><div class="font-title text-wood-700">${correctN === qs.length ? '이 숲의 퀘스트를 모두 해결했어!' : '모든 퀘스트에 도전했어!'}</div><div class="text-sm">맞힌 퀘스트 ${correctN} / ${qs.length}</div></div>
-          ${correctN < qs.length ? '<button class="btn-wood sm" data-retry-wrong>못 푼 퀘스트 다시 도전</button>' : `<button class="btn-wood sm" data-go="${unit.cat}">다른 단원 탐험하기</button>`}
-        </div>` : ''}`;
+      ${allTried ? summaryHTML(solvedN, wrongN) : ''}`;
     bind(q);
     icons();
   }
+  function summaryHTML(solvedN, wrongN) {
+    const rs = retryState();
+    let msg, btn = '';
+    if (solvedN === qs.length) { msg = '이 숲의 퀘스트를 모두 해결했어!'; btn = `<button class="btn-wood sm" data-go="${unit.cat}">다른 단원 탐험하기</button>`; }
+    else if (rs === 'none') { msg = `틀린 퀘스트 ${wrongN}개를 <b>단원 재도전</b>할 수 있어! 재도전에서 맞히면 도토리를 줄게. (기회는 한 번!)`; btn = '<button class="btn-wood leaf sm" data-start-retry>🔁 단원 재도전 시작</button>'; }
+    else if (rs === 'active') { msg = `단원 재도전 중이야. 남은 퀘스트 ${wrongN}개!`; btn = '<button class="btn-wood leaf sm" data-continue-retry>🔁 이어서 재도전</button>'; }
+    else { msg = '단원 재도전을 마쳤어! 남은 퀘스트는 힌트를 보며 연습해 봐.'; btn = `<button class="btn-wood sm" data-go="${unit.cat}">다른 단원 탐험하기</button>`; }
+    return `<div class="mt-4 soft-card p-4 flex flex-wrap items-center gap-3">
+      <span class="text-2xl">${solvedN === qs.length ? stampSVG('2rem') : rs === 'done' ? '🍃' : '🔁'}</span>
+      <div class="flex-1 min-w-[10rem]"><div class="font-title text-wood-700">${solvedN === qs.length ? msg : '모든 퀘스트에 도전했어!'}</div><div class="text-sm leading-relaxed">${solvedN === qs.length ? '' : msg + '<br/>'}맞힌 퀘스트 ${solvedN} / ${qs.length}</div></div>
+      ${btn}
+    </div>`;
+  }
+  function nextBtnHTML() {
+    const rs = retryState();
+    if (lastKind === 'retry' && rs === 'active' && nextRetry(idx) >= 0) return '<button class="btn-wood leaf sm" data-next-retry>다음 재도전 <i data-lucide="arrow-right" class="w-4 h-4"></i></button>';
+    if (idx < qs.length - 1) return '<button class="btn-wood leaf sm" data-next>다음 퀘스트 <i data-lucide="arrow-right" class="w-4 h-4"></i></button>';
+    return '<span class="font-title text-sm opacity-70">마지막 퀘스트야! 🌿</span>';
+  }
   function feedbackHTML(q) {
-    if (phase === 'right') return `
+    if (phase === 'right') {
+      const title = lastRewarded
+        ? (lastKind === 'retry' ? '재도전 성공! 마법 도토리를 얻었어! 🌰' : '정답이야! 마법 도토리를 얻었어! 🌰')
+        : '정답이야! 훌륭해! ✨';
+      const note = !lastRewarded && S.q[q.id] === 'wrong' && retryState() !== 'done'
+        ? '<div class="text-sm mt-1 text-wood-600">연습에서는 도토리가 없어. 이 단원의 퀘스트를 모두 푼 뒤 <b>단원 재도전</b>에서 맞히면 도토리를 받을 수 있어!</div>' : '';
+      return `
       <div class="feedback ok">
-        <div class="font-title text-lg text-leaf-700">${lastRewarded ? '정답이야! 마법 도토리를 얻었어! 🌰' : '정답이야! 훌륭해! ✨'}</div>
-        <div class="text-[15px] mt-1 leading-relaxed">${mathify(q.explain)}</div>
-        <div class="flex justify-end mt-3">${idx < qs.length - 1 ? '<button class="btn-wood leaf sm" data-next>다음 퀘스트 <i data-lucide="arrow-right" class="w-4 h-4"></i></button>' : '<span class="font-title text-sm opacity-70">마지막 퀘스트야! 🌿</span>'}</div>
+        <div class="font-title text-lg text-leaf-700">${title}</div>
+        <div class="text-[15px] mt-1 leading-relaxed">${mathify(q.explain)}</div>${note}
+        <div class="flex justify-end mt-3">${nextBtnHTML()}</div>
       </div>`;
-    if (phase === 'wrong') return `
+    }
+    if (phase === 'wrong') {
+      const note = lastKind === 'first' ? '<div class="text-sm mt-1 opacity-85">괜찮아! 단계별 힌트를 보고 다시 풀어 봐. 도토리는 단원 재도전에서 다시 받을 수 있어.</div>'
+        : lastKind === 'retry' ? '<div class="text-sm mt-1 opacity-85">재도전 기회를 썼어. 힌트를 보며 정답을 꼭 확인해 두자!</div>' : '';
+      return `
       <div class="feedback no">
-        <div class="font-title text-lg text-[#b4532c] flex items-center gap-2">다시 한번 공식을 떠올려볼까?
-          <button class="w-8 h-8 rounded-full bg-[#f7c66b] grid place-items-center border-2 border-wood-600 shrink-0" data-hint title="힌트 보기" aria-label="힌트 보기"><i data-lucide="lightbulb" class="w-4 h-4"></i></button></div>
-        ${hintOpen ? `<div class="mt-2 flex gap-2 items-start"><img src="c1.png" alt="" class="mascot-ring w-9 h-9 shrink-0"/><div class="speech text-[15px] leading-relaxed">💡 ${mathify(q.hint)}</div></div>` : '<div class="text-sm mt-1 opacity-80">전구 아이콘을 누르면 요정의 힌트를 볼 수 있어.</div>'}
-        <div class="flex justify-end mt-3"><button class="btn-wood sm" data-retry><i data-lucide="rotate-ccw" class="w-4 h-4"></i>재도전</button></div>
+        <div class="font-title text-lg text-[#b4532c]">다시 한번 공식을 떠올려볼까?</div>${note}
+        ${hintsHTML(q)}
+        ${lastKind === 'retry' && retryState() === 'active' && nextRetry(idx) >= 0 ? `<div class="flex justify-end mt-2">${nextBtnHTML()}</div>` : ''}
       </div>`;
-    return '';
+    }
+    // 재도전 문제를 풀 때는 이전에 펼친 힌트(해설 포함)를 숨김
+    return hintLv[q.id] && kindOf(q) !== 'retry' ? `<div class="feedback !bg-[#fffaf0] !border-[#ead7ae]">${hintsHTML(q)}</div>` : '';
   }
   function submit(value, srcEl) {
     const q = qs[idx];
     if (q.type !== 'choice' && normalizeAnswer(value) === '') { toast('답을 입력해 줘! ✍️'); return; }
-    const ok = isCorrect(q, value);
-    const prev = S.q[q.id];
-    if (!prev) S.solvedCount += 1;
-    lastRewarded = false; let stamped = false;
-    if (ok) {
-      if (prev !== 'correct') { S.q[q.id] = 'correct'; S.correctCount += 1; stamped = award(srcEl); lastRewarded = true; }
-      phase = 'right';
-    } else {
-      if (!prev) S.q[q.id] = 'wrong';
-      phase = 'wrong'; hintOpen = false;
+    const ok = isCorrect(q, value), kind = kindOf(q);
+    lastKind = kind; lastRewarded = false;
+    let stamped = false, event = null;
+    if (kind === 'first') {
+      S.solvedCount += 1;
+      if (ok) { S.q[q.id] = 'correct'; S.correctCount += 1; stamped = award(srcEl); lastRewarded = true; event = 'correct'; }
+      else { S.q[q.id] = 'wrong'; event = 'wrong'; }
+    } else if (kind === 'retry') {
+      if (ok) { S.q[q.id] = 'retry-correct'; S.correctCount += 1; stamped = award(srcEl); lastRewarded = true; event = 'retry-correct'; }
+      else { S.q[q.id] = 'retry-wrong'; event = 'retry-wrong'; }
+      if (nextRetry() < 0) { S.retry[unit.id] = 'done'; setTimeout(() => toast('🔁 단원 재도전을 모두 마쳤어!'), 1200); }
     }
+    phase = ok ? 'right' : 'wrong';
+    if (kind === 'retry') hintLv[q.id] = 0; // 재도전 결과 후에는 힌트를 처음부터 다시
+    if (!ok && !hintLv[q.id]) hintLv[q.id] = 1; // 틀리면 1단계(개념) 힌트부터 보여 줌
     picked = q.type === 'choice' ? Number(value) : value;
     saveState();
     if (!lastRewarded) updateHUD();
-    syncSheet(ok ? (stamped ? 'correct+stamp' : 'correct') : 'wrong', { unit: unit.title, questionId: q.id });
+    if (event) syncSheet(stamped ? event + '+stamp' : event, { unit: unit.title, questionId: q.id });
     render();
   }
+  const goTo = (i) => { idx = i; phase = 'ask'; picked = null; render(); };
   function bind(q) {
-    $$('[data-jump]', el).forEach((b) => b.addEventListener('click', () => { idx = Number(b.dataset.jump); phase = 'ask'; picked = null; render(); }));
+    $$('[data-jump]', el).forEach((b) => b.addEventListener('click', () => goTo(Number(b.dataset.jump))));
     $$('[data-choice]', el).forEach((b) => b.addEventListener('click', () => submit(b.dataset.choice, b)));
     const form = $('#ans-form', el);
     if (form) {
       form.addEventListener('submit', (e) => { e.preventDefault(); if (phase === 'ask') submit($('#ans', el).value, $('#submit-btn', el) || $('#ans', el)); });
       if (phase === 'ask') setTimeout(() => { const a = $('#ans', el); if (a && !el.hidden && window.matchMedia('(pointer:fine)').matches) a.focus({ preventScroll: true }); }, 50);
     }
-    const nx = $('[data-next]', el); if (nx) nx.addEventListener('click', () => { idx++; phase = 'ask'; picked = null; render(); });
-    const rt = $('[data-retry]', el); if (rt) rt.addEventListener('click', () => { phase = 'ask'; picked = null; render(); });
-    const hb = $('[data-hint]', el); if (hb) hb.addEventListener('click', () => { hintOpen = !hintOpen; render(); });
-    const rw = $('[data-retry-wrong]', el); if (rw) rw.addEventListener('click', () => { idx = qs.findIndex((x) => S.q[x.id] !== 'correct'); phase = 'ask'; picked = null; render(); });
+    const on = (sel, fn) => { const b = $(sel, el); if (b) b.addEventListener('click', fn); };
+    on('[data-next]', () => goTo(idx + 1));
+    on('[data-next-retry]', () => goTo(nextRetry(idx)));
+    on('[data-retry]', () => { phase = 'ask'; picked = null; render(); });
+    on('[data-hint]', () => { hintLv[q.id] = Math.min(3, (hintLv[q.id] || 0) + 1); render(); });
+    on('[data-start-retry]', () => { Object.keys(hintLv).forEach((k) => delete hintLv[k]); S.retry[unit.id] = 'active'; saveState(); toast('🔁 단원 재도전 시작! 맞히면 도토리를 줄게.'); goTo(nextRetry()); });
+    on('[data-continue-retry]', () => goTo(nextRetry()));
     bindGo(el);
   }
   render();
@@ -993,6 +1097,54 @@ const UNITS = {
     ],
   },
 };
+
+/* ---------- 단계별 힌트 1단계: 사용할 개념 안내 ---------- */
+const CONCEPT_HINTS = {
+  pg1: 'n각형은 한 꼭짓점에서 대각선을 그으면 <b>삼각형 몇 개</b>로 나뉠까? 삼각형 하나의 내각의 합을 떠올려 봐.',
+  pg2: '<b>정다각형</b>은 모든 내각의 크기가 같아. 내각의 합을 먼저 구하고 똑같이 나눠 보자.',
+  pg3: '다각형의 <b>외각의 합</b>은 변의 개수와 상관없이 항상 같아. 그 값을 떠올려 봐!',
+  pg4: '한 꼭짓점에서 그을 수 있는 대각선은 자기 자신과 <b>이웃한 두 꼭짓점</b>을 뺀 곳으로만 그을 수 있어. 대각선은 두 번씩 세어진다는 것도 기억해!',
+  pg5: '<b>내각의 합 공식</b>을 거꾸로 이용해 봐. 내각의 합을 알면 변의 개수 n을 찾을 수 있어.',
+  pg6: '한 꼭짓점에서 그을 수 있는 대각선의 개수 <b>n − 3</b>으로 먼저 몇 각형인지 알아내자.',
+  pg7: '정다각형의 한 내각은 (내각의 합) ÷ (꼭짓점 수). 또 <b>한 내각 + 한 외각 = 180°</b>라는 것도 쓸 수 있어.',
+  pg8: '정다각형의 한 외각은 <b>360° ÷ n</b>이야. 거꾸로 생각하면 n을 구할 수 있어.',
+  pg9: '오각형의 <b>내각의 합</b>을 먼저 구하자. 전체에서 아는 각을 빼면 나머지 각이 나와.',
+  pg10: '<b>대각선의 개수 공식</b>을 거꾸로 이용해 봐. 식을 만족하는 n을 하나씩 넣어 봐도 좋아.',
+  ci1: '원에서 <b>곡선</b>인 부분과 <b>곧은 선분</b>인 부분의 이름이 달라. 시뮬레이터의 용어 버튼을 눌러 확인해 봐!',
+  ci2: '부채꼴은 "두 반지름 + 호", 그럼 <b>호 + 현</b>으로 둘러싸인 도형은 무엇일까?',
+  ci3: '부채꼴의 <b>호의 길이는 중심각의 크기에 정비례</b>해. 원 전체 둘레의 몇 분의 몇인지 생각해 봐.',
+  ci4: '중심각을 몰라도 <b>반지름과 호의 길이</b>만으로 부채꼴의 넓이를 구하는 공식이 있어.',
+  ci5: '부채꼴의 둘레는 <b>반지름 2개</b>와 <b>호</b> 하나로 이루어져 있어.',
+  ci6: '현은 원 위의 두 점을 이은 선분이야. <b>원의 중심</b>을 지나는 현을 떠올려 봐.',
+  ci7: '<b>원의 넓이</b> 공식을 떠올려 봐. 반지름을 두 번 곱하는 공식이야.',
+  ci8: '부채꼴의 <b>넓이는 중심각의 크기에 정비례</b>해. 원 넓이의 몇 분의 몇인지 생각해 봐.',
+  ci9: '<b>호의 길이 공식</b>에 아는 값을 넣고, 모르는 중심각 x를 구하는 방정식을 세워 봐.',
+  ci10: '한 원에서 부채꼴의 넓이는 <b>중심각의 크기에 정비례</b>해. 중심각이 몇 배가 되었는지 봐!',
+  vw1: '<b>정다면체</b>는 모든 면이 합동인 정다각형이고 각 꼭짓점에 모인 면의 개수가 같아. 3D 뷰어의 정다면체 그룹을 살펴봐.',
+  vw2: '모서리 하나에는 <b>면 2개</b>가 만나. 면의 모양(정삼각형)과 면의 개수로 모서리를 셀 수 있어.',
+  vw3: 'n각기둥의 모서리는 <b>위 밑면, 아래 밑면, 옆면</b>으로 나눠서 세어 봐.',
+  vw4: '회전축을 포함하는 평면으로 자르면 <b>회전시키기 전의 평면도형</b>과 그 대칭 도형이 합쳐진 모양이 나와.',
+  vw5: '회전체를 <b>회전축에 수직</b>으로 자르면 항상 원이야. 세로로 잘라도 원이 되는 도형은?',
+  nt1: '각뿔의 전개도는 <b>밑면 1개</b>와 <b>옆면(삼각형)</b>들로 이루어져 있어. 옆면의 개수는 밑면의 변의 개수와 같아.',
+  nt2: '원기둥의 옆면을 <b>펼치면</b> 어떤 모양일까? 전개도 시뮬레이터에서 원기둥을 펼쳐 봐.',
+  nt3: '원뿔의 옆면을 펼치면 <b>꼭짓점을 중심으로 한 도형</b>이 돼. 피자 조각을 떠올려 봐!',
+  nt4: '원기둥 전개도에서 옆면 직사각형의 가로는 <b>밑면인 원의 둘레</b>와 맞닿아 있어.',
+  nt5: '원뿔 전개도에서 부채꼴의 <b>호의 길이 = 밑면의 둘레</b>, 부채꼴의 반지름 = <b>모선</b>이야.',
+  sf1: '<b>겉넓이 = (밑넓이) × 2 + (옆넓이)</b>. 옆면을 펼치면 가로가 밑면의 둘레인 직사각형이 돼.',
+  sf2: '정육면체는 <b>합동인 정사각형 6개</b>로 둘러싸여 있어.',
+  sf3: '원기둥의 겉넓이는 <b>밑면(원) 2개</b>와 <b>옆면(직사각형)</b>의 넓이의 합이야.',
+  sf4: '뿔의 겉넓이 = <b>(밑넓이) + (옆넓이)</b>. 사각뿔의 옆면은 합동인 삼각형 4개야.',
+  sf5: '원뿔의 겉넓이 = <b>밑면(원)</b> + <b>옆면(부채꼴)</b>. 옆면 넓이는 반지름과 모선으로 구할 수 있어.',
+  vl1: '기둥의 부피 = <b>(밑넓이) × (높이)</b>. 구멍이 뚫리면 밑넓이에서 구멍의 넓이를 빼면 돼.',
+  vl2: '원기둥도 기둥이야! 부피 = <b>(밑넓이) × (높이)</b>, 밑면은 원이지.',
+  vl3: '<b>아르키메데스의 원리</b>: 물에 잠긴 돌의 부피만큼 물의 높이가 올라가. 늘어난 물은 직육면체 모양이야.',
+  vl4: '뿔의 부피는 같은 밑면, 같은 높이의 기둥 부피의 <b>1/3</b>이야.',
+  vl5: '<b>구의 부피</b> 공식을 떠올려 봐. 반지름을 세 번 곱하는 공식이야.',
+};
+Object.entries(UNITS).forEach(([id, u]) => {
+  u.id = id;
+  u.quiz.forEach((q) => { q.concept = CONCEPT_HINTS[q.id] || `<b>${q.tag}</b>에서 배운 개념을 떠올려 봐.`; });
+});
 
 /* ============================ 평면도형 시뮬레이터 (SVG) ============================ */
 const P2 = (p) => `${p[0].toFixed(2)},${p[1].toFixed(2)}`;
