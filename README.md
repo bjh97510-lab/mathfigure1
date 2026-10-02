@@ -1,0 +1,40 @@
+# 마법 원정대: 도형의 숲
+
+중학교 1학년 평면도형·입체도형 인터랙티브 학습 웹앱 (2022 개정 교육과정)
+
+## 파일 구성
+| 파일 | 설명 |
+|---|---|
+| `index.html` | 웹앱 전체 (HTML + CSS + JavaScript, 한 파일) |
+| `back3.png` | 첫 화면(마법학교 입구) 배경 |
+| `c1.png` | 숲의 요정 캐릭터 |
+| `Code.gs` | 구글 시트 기록용 Apps Script |
+
+세 파일(`index.html`, `back3.png`, `c1.png`)은 **같은 폴더**에 있어야 합니다.
+인터넷 연결이 필요합니다 (Tailwind, Three.js, KaTeX, Lucide를 CDN에서 불러옴).
+
+## 실행
+- `index.html`을 크롬/엣지에서 열면 바로 동작합니다.
+- 학생들에게 배포하려면 폴더째 GitHub Pages, Netlify 등 정적 호스팅에 올리세요.
+
+## 구글 시트 연동
+1. 새 구글 스프레드시트 → **확장 프로그램 > Apps Script**
+2. `Code.gs` 내용을 붙여넣고 저장
+3. **배포 > 새 배포 > 웹 앱** (실행: 나 / 액세스: 모든 사용자) → URL 복사
+4. `index.html`에서 아래 줄을 찾아 URL로 바꾸기
+   ```js
+   const GOOGLE_SHEET_API_URL = "YOUR_APPS_SCRIPT_URL_HERE";
+   ```
+5. 전송 시점: 로그인, 문제 제출(정답/오답), 칭찬도장 획득
+   - 전송 필드: `studentId`, `solvedCount`, `correctCount`, `acorns`, `stamps`, `timestamp` (+ `event`, `unit`, `questionId`)
+   - 시트 `학습로그`(전체 기록)와 `학생현황`(학번별 최신 누적)이 자동으로 만들어집니다.
+
+URL을 설정하지 않아도 앱은 정상 동작하며, 기록은 브라우저(localStorage)에 학번별로 저장됩니다.
+
+## 학습 구성
+- **평면도형의 숲 (20문항)**: 다각형(10) · 원과 부채꼴(10)
+- **입체도형의 숲 (20문항)**: 입체도형 관찰 · 전개도 · 겉넓이 · 부피 (각 5)
+
+## 보상 규칙
+- 처음 맞힌 문제마다 도토리 🌰 +1 (같은 문제를 다시 맞혀도 중복 지급 없음)
+- 도토리 10개 → 칭찬도장 1개로 자동 교환 (`index.html`의 `ACORNS_PER_STAMP` 값으로 바꿀 수 있어요)
