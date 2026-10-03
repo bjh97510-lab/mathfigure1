@@ -9,13 +9,14 @@
  *
  * 시트 구성
  *  - "학습로그": 모든 이벤트(로그인/정답/오답/도장)를 한 줄씩 기록
- *  - "학생현황": 학번별 최신 누적 기록(한 학생당 한 줄)
+ *  - "학생현황": 학교+학번별 최신 누적 기록(한 학생당 한 줄)
+ *  ※ 코드를 고친 뒤에는 배포 > 배포 관리 > 편집 > 버전: 새 버전 으로 다시 배포해야 반영됩니다(주소는 그대로).
  */
 
 const LOG_SHEET = '학습로그';
 const SUMMARY_SHEET = '학생현황';
-const LOG_HEADER = ['저장 시각', '학번', '이벤트', '단원', '문제 ID', '풀은 문제 수', '정답 수', '도토리', '칭찬도장', '앱 시각(timestamp)'];
-const SUMMARY_HEADER = ['학번', '풀은 문제 수', '정답 수', '도토리', '칭찬도장', '마지막 접속', '마지막 이벤트'];
+const LOG_HEADER = ['저장 시각', '학교', '학번', '이벤트', '단원', '문제 ID', '풀은 문제 수', '정답 수', '도토리', '칭찬도장', '앱 시각(timestamp)'];
+const SUMMARY_HEADER = ['학교', '학번', '풀은 문제 수', '정답 수', '도토리', '칭찬도장', '마지막 접속', '마지막 이벤트'];
 
 function getSheet_(name, header) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -25,6 +26,14 @@ function getSheet_(name, header) {
     sh.appendRow(header);
     sh.getRange(1, 1, 1, header.length).setFontWeight('bold').setBackground('#f3e4bf');
     sh.setFrozenRows(1);
+  } else {
+    // 학교 이름 기능 이전에 만들어진 시트라면 '학교' 열을 끼워 넣음
+    const first = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+    if (first.indexOf('학교') < 0) {
+      const pos = header.indexOf('학교') + 1;
+      sh.insertColumnBefore(pos);
+      sh.getRange(1, pos).setValue('학교').setFontWeight('bold').setBackground('#f3e4bf');
+    }
   }
   return sh;
 }
@@ -37,18 +46,19 @@ function doPost(e) {
     const d = JSON.parse(e.postData.contents);
     const id = String(d.studentId || '').trim();
     if (!id) return json_({ ok: false, error: 'studentId 없음' });
+    const school = String(d.school || '').trim();
     const now = new Date();
 
     getSheet_(LOG_SHEET, LOG_HEADER).appendRow([
-      now, id, d.event || '', d.unit || '', d.questionId || '',
+      now, school, id, d.event || '', d.unit || '', d.questionId || '',
       Number(d.solvedCount) || 0, Number(d.correctCount) || 0,
       Number(d.acorns) || 0, Number(d.stamps) || 0, d.timestamp || '',
     ]);
 
     const sum = getSheet_(SUMMARY_SHEET, SUMMARY_HEADER);
-    const row = [id, Number(d.solvedCount) || 0, Number(d.correctCount) || 0, Number(d.acorns) || 0, Number(d.stamps) || 0, now, d.event || ''];
-    const ids = sum.getRange(2, 1, Math.max(sum.getLastRow() - 1, 1), 1).getValues().map((r) => String(r[0]));
-    const idx = ids.indexOf(id);
+    const row = [school, id, Number(d.solvedCount) || 0, Number(d.correctCount) || 0, Number(d.acorns) || 0, Number(d.stamps) || 0, now, d.event || ''];
+    const keys = sum.getRange(2, 1, Math.max(sum.getLastRow() - 1, 1), 2).getValues().map((r) => String(r[0]).trim() + '|' + String(r[1]).trim());
+    const idx = keys.indexOf(school + '|' + id);
     if (idx >= 0) sum.getRange(idx + 2, 1, 1, row.length).setValues([row]);
     else sum.appendRow(row);
 
@@ -60,15 +70,16 @@ function doPost(e) {
   }
 }
 
-/** 다른 기기에서 접속할 때 누적 기록 조회: GET ?studentId=10101 */
+/** 다른 기기에서 접속할 때 누적 기록 조회: GET ?studentId=10101&school=숲속중학교 */
 function doGet(e) {
   const id = String((e && e.parameter && e.parameter.studentId) || '').trim();
+  const school = String((e && e.parameter && e.parameter.school) || '').trim();
   if (!id) return json_({ ok: true, message: '마법 원정대 기록 서버가 동작 중입니다.' });
   const sum = getSheet_(SUMMARY_SHEET, SUMMARY_HEADER);
   const values = sum.getDataRange().getValues();
   for (let i = 1; i < values.length; i++) {
-    if (String(values[i][0]) === id) {
-      return json_({ ok: true, found: true, studentId: id, solvedCount: values[i][1], correctCount: values[i][2], acorns: values[i][3], stamps: values[i][4] });
+    if (String(values[i][0]).trim() === school && String(values[i][1]).trim() === id) {
+      return json_({ ok: true, found: true, school: school, studentId: id, solvedCount: values[i][2], correctCount: values[i][3], acorns: values[i][4], stamps: values[i][5] });
     }
   }
   return json_({ ok: true, found: false });

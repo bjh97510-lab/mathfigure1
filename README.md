@@ -26,8 +26,8 @@
    const GOOGLE_SHEET_API_URL = "YOUR_APPS_SCRIPT_URL_HERE";
    ```
 5. 전송 시점: 로그인, 문제 제출(정답/오답), 칭찬도장 획득
-   - 전송 필드: `studentId`, `solvedCount`, `correctCount`, `acorns`, `stamps`, `timestamp` (+ `event`, `unit`, `questionId`)
-   - 시트 `학습로그`(전체 기록)와 `학생현황`(학번별 최신 누적)이 자동으로 만들어집니다.
+   - 전송 필드: `school`(학교 이름), `studentId`, `solvedCount`, `correctCount`, `acorns`, `stamps`, `timestamp` (+ `event`, `unit`, `questionId`)
+   - 시트 `학습로그`(전체 기록)와 `학생현황`(학교+학번별 최신 누적)이 자동으로 만들어집니다.
 
 URL을 설정하지 않아도 앱은 정상 동작하며, 기록은 브라우저(localStorage)에 학번별로 저장됩니다.
 
